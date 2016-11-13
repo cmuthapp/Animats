@@ -10,7 +10,20 @@ import numpy
 from pybrain.structure import RecurrentNetwork, FeedForwardNetwork, LinearLayer, SigmoidLayer, FullConnection
 
 class Environment:
-    def __init__(self, num_animats, width, height, filename):
+    def __init__(self, num_animats_A, num_animats_B, width, height, filename):
+        # Helper method
+        def load_animats(self, animats, num_animats, type, saved_states=[]):
+            while len(animats) < num_animats:
+                pos = self.findSpace(Animat.radius, (0, self.height))
+                if len(saved_states) > 0:
+                    a = saved_states.pop(0)
+                    a.x = pos[0]
+                    a.y = pos[1]
+                else:
+    	            a = type(pos[0], pos[1], random.random() * 360)
+    	            a.generation = 0
+                animats.append(a)
+
         # training mode (foods everywhere)
         self.training_mode = False
         # environment
@@ -21,26 +34,32 @@ class Environment:
         self.moveLog = []
         # save state
         self.filename = filename
-        # foods
-        self.num_foods = num_animats
-        self.foods = []
-        self.produceFoods
-        # animats
-        self.num_animats = num_animats
-        self.deaths = []
-        self.animats = []
-        saved_states = self.load()
 
-        while len(self.animats) < num_animats:
-            pos = self.findSpace(Animat.radius, (0, self.height))
-            if len(saved_states) > 0:
-                a = saved_states.pop(0)
-                a.x = pos[0]
-                a.y = pos[1]
-            else:
-	            a = Animat(pos[0], pos[1], random.random() * 360)
-	            a.generation = 0
-            self.animats.append(a)
+        # Fruit
+        self.num_oranges = num_animats_B
+        self.num_bananas = num_animats_A
+        self.oranges = []
+        self.bananas = []
+
+        self.produceFruits #?
+
+
+        # animats
+        self.num_animats_A = num_animats_A
+        self.num_animats_B = num_animats_B
+
+        self.deaths_A = []
+        self.deaths_B = []
+
+        self.animats_A = []
+        self.animats_B = []
+
+        saved_states_A, saved_states_B = self.load()
+
+        # Load the animats of type A
+        load_animats(self, self.animats_A, self.num_animats_A, TypeA, saved_states_A)
+        load_animats(self, self.animats_B, self.num_animats_B, TypeB, saved_states_B)
+
 
     # animat line of sight
     def line_of_sight(self, animat):
@@ -68,39 +87,46 @@ class Environment:
                     return (x, y)
 
     # return the amount of food in the environment to a fixed state
-    def produceFoods(self, train=False):
-        fruit_bounds = (0, self.height / 7)
-        veggie_bounds =  (self.height - self.height / 7, self.height)
-        if self.training_mode:
-            fruit_bounds = (0, self.height)
-            veggie_bounds = (0, self.height)
+    def produceFruits(self, train=False):
+        # fruit_bounds = (0, self.height / 7)
+        # veggie_bounds =  (self.height - self.height / 7, self.height)
+        # if self.training_mode:
+        bounds = (0, self.height)
 
-        while len(list(filter(lambda f : isinstance(f, Fruit), self.foods))) < self.num_foods:
-            pos = self.findSpace(Food.radius, fruit_bounds)
-            self.foods.append(Fruit(pos[0], pos[1]))
+        # Fill oranges
+        while len(list(filter(lambda f : isinstance(f, Orange), self.oranges))) < self.num_oranges:
+            pos = self.findSpace(Fruit.radius, bounds)
+            self.oranges.append(Orange(pos[0], pos[1]))
 
-        while len(list(filter(lambda f:isinstance(f,Veggie), self.foods))) < self.num_foods:
-            pos = self.findSpace(Food.radius, veggie_bounds)
-            self.foods.append(Veggie(pos[0], pos[1]))
+        while len(list(filter(lambda f : isinstance(f, Banana), self.bananas))) < self.num_bananas:
+            pos = self.findSpace(Fruit.radius, bounds)
+            self.bananas.append(Banana(pos[0], pos[1]))
 
     def update(self):
-        # if an animat died, the two fittest animats mate
-        while len(self.deaths) > 0:
-            fittest = sorted(self.animats, key=lambda a: -a.avg_fruit_hunger -a.avg_veggie_hunger)
-            pos = self.findSpace(Animat.radius, (0, self.height))
-            child = fittest[0].mate(fittest[1])
-            child.x = pos[0]
-            child.y = pos[1]
-            self.animats.append(child)
+        ###
+        # If an animat  died, the two fittest animats of the same type mate
+        ###
+        def update_deaths(self, deaths, animats):
+            while len(deaths) > 0:
+                fittest = sorted(animats, key = lambda a : -a.avg_hunger) # Fitness function goes here
+                pos = self.findSpace(Animat.radius, (0, self.height))
+                child = fittest[0].mate(fittest[1])
+                child.x = pos[0]
+                child.y = pos[1]
+                animats.append(child)
 
-            # log experiment data for survival
-            tmpLog = (self.deaths[0].generation, self.deaths[0].age )
-            self.log.append( tmpLog )
-            tmpMoveLog = (self.deaths[0].generation, self.deaths[0].backForth)
-            self.moveLog.append( tmpMoveLog )
-            self.animats.remove(self.deaths.pop(0))
+                tmpLog = (deaths[0].generation, deaths[0].age)
+                self.log.append(tmpLog)
+                tmpMoveLog = (deaths[0].generation, deaths[0].num_peeled)
+                self.moveLog.append(tmpMoveLog)
 
-        for animat in self.animats:
+                # Remove animat from active
+                animats.remove(deaths.pop(0))
+
+        update_deaths(self, self.deaths_A, self.animats_A)
+        update_deaths(self, self.deaths_B, self.animats_B)
+
+        for animat in (self.animats_A + self.animats_B):
             # update sensory information from environment
             animat.sees = self.line_of_sight(animat)
             step = 3
@@ -112,25 +138,34 @@ class Environment:
             animat.update()
 
             # perform animat decided action in environment
-            if animat.wants_to_move and (not animat.touching or isinstance(animat.touching,Food)):
+            if animat.wants_to_move and (not animat.touching):
                 animat.x = step_x + animat.x
                 animat.y = step_y + animat.y
 
-            if isinstance(animat.touching, Food) and animat.wants_to_pickup:
-                self.foods.remove(animat.touching)
-                animat.food = animat.touching
+            if isinstance(animat.touching, Fruit) and animat.wants_to_peel and animat.can_peel(animat.touching):
+                animat.num_peeled += 1
+                animat.touching.is_peeled = True
 
-            if animat.wants_to_putdown:
-                if isinstance(animat.food, Fruit):
-                    self.foods.append(Fruit(animat.x - (step_x*10), animat.y - (step_y*10)))
-                elif isinstance(animat.food, Veggie):
-                    self.foods.append(Veggie(animat.x - (step_x*10), animat.y - (step_y*10)))
-                animat.food = None
+            if isinstance(animat.touching, Fruit) and animat.wants_to_eat and animat.can_eat(animat.touching):
+                # Remove food
+                if isinstance(animat.touching, Orange):
+                    self.oranges.remove(animat.touching)
+                else:
+                    self.bananas.remove(animat.touching)
 
-            # control the amount of food and animats in the environment
-            self.produceFoods()
-            if animat not in self.deaths and (animat.fruit_hunger + animat.veggie_hunger < 1000):
-                self.deaths.append(animat)
+                # Update hunger
+                emwa_constant = 0.5
+                animat.hunger = min(2000, animat.hunger + 200)
+                animat.avg_hunger = (1 - emwa_constant) * animat.avg_hunger + emwa_constant * animat.hunger
+
+            self.produceFruits()
+
+            # murder animat
+            if (animat not in self.deaths_A) and (animat not in self.deaths_B) and (animat.hunger < 1000):
+                if isinstance(animat, TypeA):
+                    self.deaths_A.append(animat)
+                else:
+                    self.deaths_B.append(animat)
 
 
     def collision(self, x, y, radius, without=None):
@@ -139,14 +174,15 @@ class Environment:
             return self
 
         # check food collision
-        for food in self.foods:
-            if (x - food.x)**2 + (y - food.y)**2 <= Food.radius**2:
+        for food in (self.oranges + self.bananas):
+            if (x - food.x) ** 2 + (y - food.y) ** 2 <= Fruit.radius ** 2:
                 return food
 
         # check animat-animat collision
-        animats = list(self.animats)
+        animats = list(self.animats_A + self.animats_B)
         if without:
             animats.remove(without)
+
         for animat in animats:
             if (x - animat.x)**2 + (y - animat.y)**2 <= Animat.radius**2:
                 return animat
@@ -154,152 +190,180 @@ class Environment:
         # no collision
         return None
 
+
     # load saved animat states into environment
     def load(self):
         if self.filename == "":
-            return []
+            return [], []
         try:
-            f = open(self.filename, 'r')
-            animats = pickle.load(f)
-            f.close()
-            return animats
+            with open(self.filename, 'rb') as f:
+                return pickle.load(f)
         except:
             print("Could not load file " + self.filename)
-            return []
+            return [], []
 
     def save(self):
         if self.filename != "":
-            f = open(self.filename, 'w')
-            pickle.dump(self.animats, f)
-            f.close()
+            with open(self.filename, 'wb') as f:
+                pickle.dump((self.animats_A, self.animats_B), f)
 
 
 class Animat:
     radius = 30
     def __init__(self, x, y, direction):
         self.age = 0
+
         # position
         self.x = x
         self.y = y
+
         # number of going back and forth for different foods
-        self.backForth = 0
-        self.LastFood = None # the last food animat ate
+        self.num_peeled = 0
+
         # orientation (0 - 359 degrees)
         self.direction = direction
-        # carrying food
-        self.food = None
+
         # touching anything
         self.touching = None
         self.sees = None
+
         # hunger sensor
-        self.fruit_hunger = 2000
-        self.veggie_hunger = 2000
-        self.avg_fruit_hunger = 0
-        self.avg_veggie_hunger = 0
-        # neural net
+        self.hunger = 2000
+        self.avg_hunger = 0
+
+        ###
+        # Neural Network
+        #
+        # Inputs:
+        # 1. sees_peeled_orange
+        # 2. sees_unpeeled_orange
+        # 3. sees_peeled_banana
+        # 4. sees_unpeeled_banana
+        # 5. sees_animat
+        # 6. sees_wall
+        # 7. hunger
+        # 8. touching_peeled_orange
+        # 9. touching_unpeeled_orange
+        # 10. touching_peeled_banana
+        # 11. touching_unpeeled_banana
+        # 12. touching_animat
+        # 13. touching_wall
+        ###
+
         self.net = FeedForwardNetwork()
-        self.net.addInputModule(LinearLayer(12, name='in'))
-        self.net.addModule(SigmoidLayer(13, name='hidden'))
-        self.net.addOutputModule(LinearLayer(6, name='out'))
+        self.net.addInputModule(LinearLayer(13, name='in'))
+        self.net.addModule(SigmoidLayer(14, name='hidden'))
+        self.net.addOutputModule(LinearLayer(5, name='out'))
         self.net.addConnection(FullConnection(self.net['in'], self.net['hidden']))
         self.net.addConnection(FullConnection(self.net['hidden'], self.net['out']))
         self.net.sortModules()
+
         # thresholds for deciding an action
         self.move_threshold = 0
-        self.pickup_threshold = 0
-        self.putdown_threshold = 0
+        self.peel_threshold = 0
         self.eat_threshold = 0
 
     def update(self):
+
+        # basics
+        self.age += 1
+        self.hunger -= 0.5 # Hunger increases with time
+
         sensors = (
-            2000 * int(
-                isinstance(self.sees, Fruit) or \
-                (isinstance(self.sees, Animat) and isinstance(self.sees.food, Fruit))
-            ),
-            2000 * int(
-                isinstance(self.sees, Veggie) or \
-                (isinstance(self.sees, Animat) and isinstance(self.sees.food, Veggie))
-            ),
+            # 1. sees_peeled_orange
+            2000 * int(isinstance(self.sees, Orange) and self.sees.is_peeled),
+            # 2. sees_unpeeled_orange
+            2000 * int(isinstance(self.sees, Orange) and not self.sees.is_peeled),
+            # 3. sees_peeled_banana
+            2000 * int(isinstance(self.sees, Banana) and self.sees.is_peeled),
+            # 4. sees_unpeeled_banana
+            2000 * int(isinstance(self.sees, Banana) and not self.sees.is_peeled),
+            # 5. sees_animat
             2000 * int(isinstance(self.sees, Animat)),
+            # 6. sees_wall
             2000 * int(isinstance(self.sees, Environment)),
-            2000 * int(isinstance(self.food, Fruit)),
-            2000 * int(isinstance(self.food, Veggie)),
-            self.fruit_hunger,
-            self.veggie_hunger,
-            2000 * int(
-                isinstance(self.touching, Fruit) or \
-                (isinstance(self.touching, Animat) and isinstance(self.touching.food, Fruit))
-            ),
-            2000 * int(
-                isinstance(self.touching, Veggie) or \
-                (isinstance(self.touching, Animat) and isinstance(self.touching.food, Veggie))
-            ),
+            # 7. hunger
+            self.hunger,
+            # 8. touching_peeled_orange
+            2000 * int(isinstance(self.touching, Orange) and not self.touching.is_peeled),
+            # 9. touching_unpeeled_orange
+            2000 * int(isinstance(self.touching, Orange) and self.touching.is_peeled),
+            # 10. touching_peeled_banana
+            2000 * int(isinstance(self.touching, Banana) and not self.touching.is_peeled),
+            # 11. touching_unpeeled_banana
+            2000 * int(isinstance(self.touching, Banana) and self.touching.is_peeled),
+            # 12. touching_animat
             2000 * int(isinstance(self.touching, Animat)),
+            # 13. touching_wall
             2000 * int(isinstance(self.touching, Environment))
         )
+
         decision = self.net.activate(sensors)
 
-        self.age += 1
-        self.get_hungry(.5)
+        ###
+        # Output layer in neural network
+        # 0. wants_to_move
+        # 1. turn_left
+        # 2. turn_right
+        # 3. wants_to_peel
+        # 4. wants_to_eat
+        ###
 
         # move forward
         self.wants_to_move = (decision[0] > self.move_threshold)
 
-        # rotate left
+        # turn_left
         self.direction -= decision[1]
 
-        # rotate right
+        # turn_right
         self.direction += decision[2]
 
-        # pickup
-        self.wants_to_pickup = ((decision[3] > self.pickup_threshold) and not self.food)
+        # wants_to_peel
+        self.wants_to_peel = decision[3] > self.peel_threshold
 
-        # putdown
-        self.wants_to_putdown = ((decision[4] > self.putdown_threshold) and self.food)
-
-        # eat
-        if (decision[5] > self.eat_threshold) and self.food:
-            if isinstance(self.food, Fruit):
-                self.fruit_hunger = 2000 if (self.fruit_hunger > 1800) else (self.fruit_hunger + 200)
-                self.avg_fruit_hunger = (self.avg_fruit_hunger + self.fruit_hunger) / 2
-
-            if isinstance(self.LastFood, Veggie): # the last food is different from eating food
-                self.backForth = self.backForth + 1
-                print(self.backForth)
-                self.LastFood = Fruit
-
-            elif isinstance(self.food, Veggie):
-                self.veggie_hunger = 2000 if (self.veggie_hunger > 1800) else (self.veggie_hunger + 200)
-                self.avg_veggie_hunger = (self.avg_veggie_hunger + self.veggie_hunger) / 2
-
-                if isinstance(self.LastFood, Fruit): # the last food is different from eating food
-                    self.backForth = self.backForth + 1
-                    print(self.backForth)
-                    self.LastFood = Veggie
-                    self.food = None
-
-
-    def get_hungry(self, amount):
-        self.fruit_hunger -= amount
-        self.veggie_hunger -= amount
+        # wants_to_eat
+        self.wants_to_eat = decision[4] > self.eat_threshold
 
     # returns a child with a genetic combination of neural net weights of 2 parents
     def mate(self, other):
-        child = Animat(0,0, random.random() * 360)
+        child = type(self)(0, 0, random.random() * 360)
         child.generation = min(self.generation, other.generation) + 1
 
         # inherit parents connection weights
         for i in range(0,len(self.net.params)):
             if random.random() > .1:
                 child.net.params[i] = random.choice([self.net.params[i], other.net.params[i]])
+
         return child
 
-class Food:
+###
+# Separate types of animats
+# 1. Type A: Eats Banana and peels Orange
+# 2. Type B: Eats Orange and peels Banana
+###
+class TypeA(Animat):
+    def can_peel(self, obj):
+        return isinstance(obj, Orange) and not obj.is_peeled
+
+    def can_eat(self, obj):
+        return isinstance(obj, Banana) and obj.is_peeled
+
+class TypeB(Animat):
+    def can_peel(self, obj):
+        return isinstance(obj, Banana) and not obj.is_peeled
+
+    def can_eat(self, obj):
+        return isinstance(obj, Orange) and obj.is_peeled
+
+###
+# Fruit items that populate the map
+###
+class Fruit:
     radius = 20
     def __init__(self, x, y):
         self.x = x
         self.y = y
-        self.bites = 10 # ? Do we need bites
+        self.is_peeled = False
 
-class Veggie(Food): pass
-class Fruit(Food): pass
+class Orange(Fruit): pass
+class Banana(Fruit): pass

@@ -2,9 +2,10 @@
 import pygame
 import sys
 from .model import *
+import os
 
 class Simulation:
-    def __init__(self, num_animats, width, height, saved_nets):
+    def __init__(self, num_animats_A, num_animats_B, width, height, saved_nets):
         # initialize pygame
         pygame.init()
 
@@ -18,20 +19,28 @@ class Simulation:
         pygame.display.set_caption('Import/Export project')
 
         #initialize sprites
-        self.bg = pygame.image.load("resources/bg.png")
+        print(os.getcwd())
+        self.bg = pygame.image.load("/Users/pranav/Academic/CS263/altruism_in_animats/resources/bg.jpg")
 
         # pictures resources
-        self.animat_sprite  = pygame.image.load("resources/animat.png")
-        self.fruit          = pygame.image.load("resources/banana.png")
-        self.veggie         = pygame.image.load("resources/tomato.png")
+        self.animat_A_sprite = pygame.image.load("/Users/pranav/Academic/CS263/altruism_in_animats/resources/animat_A.png")
+        self.animat_B_sprite = pygame.image.load("/Users/pranav/Academic/CS263/altruism_in_animats/resources/animat_B.png")
+        self.orange_unpeeled = pygame.image.load("/Users/pranav/Academic/CS263/altruism_in_animats/resources/orange_unpeeled.png")
+        self.orange_peeled   = pygame.image.load("/Users/pranav/Academic/CS263/altruism_in_animats/resources/orange_peeled.png")
+        self.banana_peeled   = pygame.image.load("/Users/pranav/Academic/CS263/altruism_in_animats/resources/banana_peeled.png")
+        self.banana_unpeeled = pygame.image.load("/Users/pranav/Academic/CS263/altruism_in_animats/resources/banana_unpeeled.png")
 
         # modify pictures to appropriate sizes
-        self.animat_sprite = pygame.transform.scale(self.animat_sprite, (32,32))
-        self.bg            = pygame.transform.scale(self.bg, (1000, 700))
-        self.fruit         = pygame.transform.scale(self.fruit, (26, 26))
-        self.veggie        = pygame.transform.scale(self.veggie, (26, 26))
+        self.animat_A_sprite = pygame.transform.scale(self.animat_A_sprite, (32,32))
+        self.animat_B_sprite = pygame.transform.scale(self.animat_B_sprite, (32,32))
 
-        self.env = Environment(num_animats, width, height, saved_nets)
+        self.bg            = pygame.transform.scale(self.bg, (width, height))
+        self.orange_unpeeled = pygame.transform.scale(self.orange_unpeeled, (26, 26))
+        self.orange_peeled   = pygame.transform.scale(self.orange_peeled, (26, 26))
+        self.banana_peeled   = pygame.transform.scale(self.banana_peeled, (26, 26))
+        self.banana_unpeeled = pygame.transform.scale(self.banana_unpeeled, (26, 26))
+
+        self.env = Environment(num_animats_A, num_animats_B, width, height, saved_nets)
 
     def update(self, speed):
         # update model a certain number of times
@@ -44,41 +53,30 @@ class Simulation:
         # repaint
         self.screen.blit(self.bg, (0,0))
 
-        # paint food
-        for food in self.env.foods:
-            if isinstance(food, Fruit):
-                self.screen.blit(
-                    self.fruit,
-                    (food.x - Food.radius, food.y - Food.radius)
-                )
-            else:
-                self.screen.blit(
-                    self.veggie,
-                    (food.x - Food.radius, food.y - Food.radius)
-                )
+        # paint fruit
+        for fruit in (self.env.oranges + self.env.bananas):
+            coord = (fruit.x - Fruit.radius, fruit.y - Fruit.radius)
+            if isinstance(fruit, Orange) and fruit.is_peeled:
+                self.screen.blit(self.orange_peeled, coord)
+            elif isinstance(fruit, Orange) and not fruit.is_peeled:
+                self.screen.blit(self.orange_unpeeled, coord)
+            elif isinstance(fruit, Banana) and fruit.is_peeled:
+                self.screen.blit(self.banana_peeled, coord)
+            elif isinstance(fruit, Banana) and not fruit.is_peeled:
+                self.screen.blit(self.banana_unpeeled, coord)
 
         # paint animats
-        for animat in self.env.animats:
+        for animat in (self.env.animats_A + self.env.animats_B):
+            sprite = self.animat_A_sprite if isinstance(animat, TypeA) else self.animat_B_sprite
             self.screen.blit(
-                pygame.transform.rotate(self.animat_sprite, 360 - animat.direction),
+                pygame.transform.rotate(sprite, 360 - animat.direction),
                 (animat.x - Animat.radius, animat.y - Animat.radius)
             )
-            if animat.food:
-                if isinstance(animat.food, Fruit):
-                    self.screen.blit(
-                        self.fruit,
-                        (animat.x - Animat.radius, animat.y - Animat.radius)
-                    )
-                elif isinstance(animat.food, Veggie):
-                    self.screen.blit(
-                        self.veggie,
-                        (animat.x - Animat.radius, animat.y - Animat.radius)
-                    )
 
         pygame.display.flip()
 
 def runSim(num_animats = 10, width = 1000, height = 700, filename=""):
-    simulation = Simulation(num_animats, width, height, filename)
+    simulation = Simulation(num_animats, num_animats, width, height, filename)
 
     while 1:
         for event in pygame.event.get():
