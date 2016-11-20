@@ -8,6 +8,7 @@ import math
 import pickle
 import numpy
 from pybrain.structure import RecurrentNetwork, FeedForwardNetwork, LinearLayer, SigmoidLayer, FullConnection
+import time
 
 class Environment:
     def __init__(self, num_animats_A, num_animats_B, width, height, filename):
@@ -115,11 +116,13 @@ class Environment:
                 child.y = pos[1]
                 animats.append(child)
 
-                tmpLog = (deaths[0].generation, deaths[0].age)
-                self.log.append(tmpLog)
-                tmpMoveLog = (deaths[0].generation, deaths[0].num_peeled)
-                self.moveLog.append(tmpMoveLog)
-
+                self.log.append((
+                    time.strftime('%X'),
+                    "death",
+                    deaths[0].generation,
+                    deaths[0].age,
+                    deaths[0].num_peeled
+                ))
                 # Remove animat from active
                 animats.remove(deaths.pop(0))
 

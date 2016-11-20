@@ -3,6 +3,11 @@ import pygame
 import sys
 from .model import *
 import os
+import time
+
+folder_root = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir))
+resource_folder = os.path.abspath(os.path.join(folder_root, "resources"))
+# "/Users/pranav/Academic/CS263/altruism_in_animats/resources/"
 
 class Simulation:
     def __init__(self, num_animats_A, num_animats_B, width, height, saved_nets):
@@ -20,15 +25,15 @@ class Simulation:
 
         #initialize sprites
         print(os.getcwd())
-        self.bg = pygame.image.load("/Users/pranav/Academic/CS263/altruism_in_animats/resources/bg.jpg")
+        self.bg = pygame.image.load(os.path.join(resource_folder, "bg.jpg"))
 
         # pictures resources
-        self.animat_A_sprite = pygame.image.load("/Users/pranav/Academic/CS263/altruism_in_animats/resources/animat_A.png")
-        self.animat_B_sprite = pygame.image.load("/Users/pranav/Academic/CS263/altruism_in_animats/resources/animat_B.png")
-        self.orange_unpeeled = pygame.image.load("/Users/pranav/Academic/CS263/altruism_in_animats/resources/orange_unpeeled.png")
-        self.orange_peeled   = pygame.image.load("/Users/pranav/Academic/CS263/altruism_in_animats/resources/orange_peeled.png")
-        self.banana_peeled   = pygame.image.load("/Users/pranav/Academic/CS263/altruism_in_animats/resources/banana_peeled.png")
-        self.banana_unpeeled = pygame.image.load("/Users/pranav/Academic/CS263/altruism_in_animats/resources/banana_unpeeled.png")
+        self.animat_A_sprite = pygame.image.load(os.path.join(resource_folder, "animat_A.png"))
+        self.animat_B_sprite = pygame.image.load(os.path.join(resource_folder, "animat_B.png"))
+        self.orange_unpeeled = pygame.image.load(os.path.join(resource_folder, "orange_unpeeled.png"))
+        self.orange_peeled   = pygame.image.load(os.path.join(resource_folder, "orange_peeled.png"))
+        self.banana_peeled   = pygame.image.load(os.path.join(resource_folder, "banana_peeled.png"))
+        self.banana_unpeeled = pygame.image.load(os.path.join(resource_folder, "banana_unpeeled.png"))
 
         # modify pictures to appropriate sizes
         self.animat_A_sprite = pygame.transform.scale(self.animat_A_sprite, (32,32))
@@ -85,8 +90,12 @@ def runSim(num_animats = 10, width = 1000, height = 700, filename=""):
                 simulation.env.save()
 
                 # save record log
-                fLog = open("log.txt",'w')
-                map(lambda r: fLog.write( str(r) + '\n'), simulation.env.log)
+                fLog = open(os.path.join(folder_root, "log.txt"),'w')
+                for r in simulation.env.log:
+                    fstr = " ".join(map(str, r))
+                    print(fstr)
+                    fLog.write(fstr + '\n')
+
                 fLog.close()
                 sys.exit()
 
