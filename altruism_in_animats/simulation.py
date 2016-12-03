@@ -21,7 +21,7 @@ class Simulation:
         self.screenHeight = height
 
         # set the name of display windows
-        pygame.display.set_caption('Import/Export project')
+        pygame.display.set_caption('Altruism Experiment')
 
         #initialize sprites
         print(os.getcwd())
