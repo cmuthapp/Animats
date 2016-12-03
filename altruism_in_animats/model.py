@@ -42,7 +42,7 @@ class Environment:
         self.oranges = []
         self.bananas = []
 
-        self.produceFruits #?
+        self.produceFruits 
 
 
         # animats
@@ -107,16 +107,18 @@ class Environment:
 
     def update(self):
         ###
-        # If an animat  died, the two fittest animats of the same type mate
+        # If an animat  died, the two fittest animats of each type mate
         ###
-        def update_deaths(self, deaths, animats):
+        def update_deaths(self, deaths, animats_same_type, animats_other_type):
             while len(deaths) > 0:
-                fittest = sorted(animats, key = lambda a : -a.avg_hunger) # Fitness function goes here
+                fittest_same_type  = sorted(animats_same_type, key = lambda a : -a.avg_hunger)
+                fittest_other_type = sorted(animats_other_type, key = lambda a : -a.avg_hunger)
+
                 pos = self.findSpace(Animat.radius, (0, self.height))
-                child = fittest[0].mate(fittest[1])
+                child = fittest_same_type[0].mate(fittest_other_type[1])
                 child.x = pos[0]
                 child.y = pos[1]
-                animats.append(child)
+                animats_same_type.append(child)
 
                 self.log.append((
                     (datetime.datetime.utcnow() - self.start_time).total_seconds(),
@@ -125,11 +127,12 @@ class Environment:
                     deaths[0].age,
                     deaths[0].num_peeled
                 ))
-                # Remove animat from active
-                animats.remove(deaths.pop(0))
 
-        update_deaths(self, self.deaths_A, self.animats_A)
-        update_deaths(self, self.deaths_B, self.animats_B)
+                # Remove animat from active
+                animats_same_type.remove(deaths.pop(0))
+
+        update_deaths(self, self.deaths_A, self.animats_A, self.animats_B)
+        update_deaths(self, self.deaths_B, self.animats_B, self.animats_A)
 
         for animat in (self.animats_A + self.animats_B):
             # update sensory information from environment
@@ -160,13 +163,13 @@ class Environment:
 
                 # Update hunger
                 emwa_constant = 0.5
-                animat.hunger = min(2000, animat.hunger + 200)
+                animat.hunger = animat.hunger + 500
                 animat.avg_hunger = (1 - emwa_constant) * animat.avg_hunger + emwa_constant * animat.hunger
 
             self.produceFruits()
 
             # murder animat
-            if (animat not in self.deaths_A) and (animat not in self.deaths_B) and (animat.hunger < 1000):
+            if (animat not in self.deaths_A) and (animat not in self.deaths_B) and (animat.hunger < 500):
                 if isinstance(animat, TypeA):
                     self.deaths_A.append(animat)
                 else:
