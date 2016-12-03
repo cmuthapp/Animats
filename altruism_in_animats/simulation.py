@@ -80,8 +80,8 @@ class Simulation:
 
         pygame.display.flip()
 
-def runSim(num_animats = 10, width = 1000, height = 700, filename=""):
-    simulation = Simulation(num_animats, num_animats, width, height, filename)
+def runSim(num_animats_A = 10, num_animats_B = 10, width = 1000, height = 700, filename=""):
+    simulation = Simulation(num_animats_A, num_animats_B, width, height, filename)
 
     # Create file
     fLog = open(os.path.join(folder_root, "log.txt"), 'w')
@@ -93,6 +93,7 @@ def runSim(num_animats = 10, width = 1000, height = 700, filename=""):
             for r in simulation.env.log:
                 fstr = " ".join(map(str, r))
                 fLog.write(fstr + '\n')
+            simulation.env.log = []
 
 
     i = 1
