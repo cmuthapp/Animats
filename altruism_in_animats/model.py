@@ -120,6 +120,7 @@ class Environment:
 
                 self.log.append((
                     (datetime.datetime.utcnow() - self.start_time).total_seconds(),
+                    deaths[0].__class__.__name__,
                     deaths[0].generation,
                     deaths[0].age,
                     deaths[0].num_peeled
