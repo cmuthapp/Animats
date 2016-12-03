@@ -84,9 +84,8 @@ def runSim(num_animats_A = 10, num_animats_B = 10, width = 1000, height = 700, f
     simulation = Simulation(num_animats_A, num_animats_B, width, height, filename)
 
     # Create file
-    fLog = open(os.path.join(folder_root, "log.txt"), 'w')
-    fLog.close()
-
+    with open(os.path.join(folder_root, "log.txt"), 'w') as fLog:
+        fLog.write('# time_died type generation age num_peeled num_eaten num_moved\n')
 
     def flush_logs():
         with open(os.path.join(folder_root, "log.txt"),'a') as fLog:
@@ -94,7 +93,6 @@ def runSim(num_animats_A = 10, num_animats_B = 10, width = 1000, height = 700, f
                 fstr = " ".join(map(str, r))
                 fLog.write(fstr + '\n')
             simulation.env.log = []
-
 
     i = 1
     while 1:

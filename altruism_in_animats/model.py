@@ -37,8 +37,8 @@ class Environment:
         self.filename = filename
 
         # Fruit
-        self.num_oranges = num_animats_B
-        self.num_bananas = num_animats_A
+        self.num_oranges = num_animats_B * 2
+        self.num_bananas = num_animats_A * 2
         self.oranges = []
         self.bananas = []
 
@@ -123,7 +123,9 @@ class Environment:
                     deaths[0].__class__.__name__,
                     deaths[0].generation,
                     deaths[0].age,
-                    deaths[0].num_peeled
+                    deaths[0].num_peeled,
+                    deaths[0].num_eaten,
+                    deaths[0].num_moved
                 ))
                 # Remove animat from active
                 animats.remove(deaths.pop(0))
@@ -143,13 +145,32 @@ class Environment:
             animat.update()
 
             # perform animat decided action in environment
-            if animat.wants_to_move and (not animat.touching):
-                animat.x = step_x + animat.x
-                animat.y = step_y + animat.y
+            if animat.wants_to_move:
+                # Animat is free to move
+                if animat.touching == None:
+                    animat.x = step_x + animat.x
+                    animat.y = step_y + animat.y
+                    animat.num_moved += 1
+
+                # Animat has hit the wall
+                elif animat.touching == animat:
+                    # print("HIT WALL")
+                    animat.direction = (animat.direction + 180) % 360
+
+                # Animat has hit another animat
+                elif isinstance(animat.touching, Animat):
+                    # print("HIT ANOTHER ANIMAT")
+                    animat.direction = (animat.direction + 180) % 360
+
+                # Animat has hit a fruit and it doesn't want to do anything about it
+                elif isinstance(animat.touching, Fruit) and (not animat.wants_to_peel) and (not animat.wants_to_eat):
+                    # print("HIT FRUIT")
+                    animat.direction = (animat.direction + 180) % 360
 
             if isinstance(animat.touching, Fruit) and animat.wants_to_peel and animat.can_peel(animat.touching):
                 animat.num_peeled += 1
                 animat.touching.is_peeled = True
+                print("PEEL!")
 
             if isinstance(animat.touching, Fruit) and animat.wants_to_eat and animat.can_eat(animat.touching):
                 # Remove food
@@ -161,16 +182,27 @@ class Environment:
                 # Update hunger
                 emwa_constant = 0.5
                 animat.hunger = min(2000, animat.hunger + 200)
+                animat.num_eaten  = animat.num_eaten + 1
                 animat.avg_hunger = (1 - emwa_constant) * animat.avg_hunger + emwa_constant * animat.hunger
-
+                print("EAT!")
             self.produceFruits()
 
-            # murder animat
-            if (animat not in self.deaths_A) and (animat not in self.deaths_B) and (animat.hunger < 1000):
-                if isinstance(animat, TypeA):
-                    self.deaths_A.append(animat)
-                else:
-                    self.deaths_B.append(animat)
+            # Check if animat is not dead
+            if (animat not in self.deaths_A) and (animat not in self.deaths_B):
+
+                # Kill animat for starvation
+                if animat.hunger < 1000:
+                    if isinstance(animat, TypeA):
+                        self.deaths_A.append(animat)
+                    else:
+                        self.deaths_B.append(animat)
+                    print("DEATH BY HUNGER!")
+                elif animat.age > 150 and animat.num_moved < 0.25 * animat.age:
+                    if isinstance(animat, TypeA):
+                        self.deaths_A.append(animat)
+                    else:
+                        self.deaths_B.append(animat)
+                    print("DEATH BY STAGNATION!", animat.num_moved, animat.age)
 
 
     def collision(self, x, y, radius, without=None):
@@ -222,8 +254,10 @@ class Animat:
         self.x = x
         self.y = y
 
-        # number of going back and forth for different foods
+        # number of fruits peeled
         self.num_peeled = 0
+        self.num_eaten = 0
+        self.num_moved = 0
 
         # orientation (0 - 359 degrees)
         self.direction = direction
@@ -364,7 +398,7 @@ class TypeB(Animat):
 # Fruit items that populate the map
 ###
 class Fruit:
-    radius = 20
+    radius = 15
     def __init__(self, x, y):
         self.x = x
         self.y = y
