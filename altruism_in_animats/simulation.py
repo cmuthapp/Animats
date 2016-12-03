@@ -83,20 +83,29 @@ class Simulation:
 def runSim(num_animats = 10, width = 1000, height = 700, filename=""):
     simulation = Simulation(num_animats, num_animats, width, height, filename)
 
+    # Create file
+    fLog = open(os.path.join(folder_root, "log.txt"), 'w')
+    fLog.close()
+
+
+    def flush_logs():
+        with open(os.path.join(folder_root, "log.txt"),'a') as fLog:
+            for r in simulation.env.log:
+                fstr = " ".join(map(str, r))
+                fLog.write(fstr + '\n')
+
+
+    i = 1
     while 1:
+        i = i + 1
+        if i % 5 == 0:
+            flush_logs()
+
         for event in pygame.event.get():
             # check for exit
             if event.type == pygame.QUIT:
                 simulation.env.save()
-
-                # save record log
-                fLog = open(os.path.join(folder_root, "log.txt"),'w')
-                for r in simulation.env.log:
-                    fstr = " ".join(map(str, r))
-                    print(fstr)
-                    fLog.write(fstr + '\n')
-
-                fLog.close()
+                flush_logs()
                 sys.exit()
 
         simulation.update(10)

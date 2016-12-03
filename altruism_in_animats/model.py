@@ -8,7 +8,7 @@ import math
 import pickle
 import numpy
 from pybrain.structure import RecurrentNetwork, FeedForwardNetwork, LinearLayer, SigmoidLayer, FullConnection
-import time
+import datetime
 
 class Environment:
     def __init__(self, num_animats_A, num_animats_B, width, height, filename):
@@ -61,6 +61,8 @@ class Environment:
         load_animats(self, self.animats_A, self.num_animats_A, TypeA, saved_states_A)
         load_animats(self, self.animats_B, self.num_animats_B, TypeB, saved_states_B)
 
+        # Start time
+        self.start_time = datetime.datetime.utcnow()
 
     # animat line of sight
     def line_of_sight(self, animat):
@@ -117,8 +119,7 @@ class Environment:
                 animats.append(child)
 
                 self.log.append((
-                    time.strftime('%X'),
-                    "death",
+                    (datetime.datetime.utcnow() - self.start_time).total_seconds(),
                     deaths[0].generation,
                     deaths[0].age,
                     deaths[0].num_peeled
